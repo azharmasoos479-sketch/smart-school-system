@@ -6,6 +6,8 @@
 <title>SmartSchool — Admin Dashboard</title>
 <link rel="stylesheet" href="app.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#0b2545">
 </head>
 <body>
 
@@ -61,5 +63,6 @@
 <div id="toast" class="toast hidden"></div>
 
 <script src="app.js"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('../sw.js').catch(function(){});}</script>
 </body>
 </html>

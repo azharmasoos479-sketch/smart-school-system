@@ -1,0 +1,26 @@
+{
+  "name": "SmartSchool \u2014 School Management System",
+  "short_name": "SmartSchool",
+  "description": "All-in-one school management system for Pakistan: attendance, fees, results, accounting, payroll and admissions.",
+  "lang": "en",
+  "start_url": "app/",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b2545",
+  "theme_color": "#0b2545",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
