@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartSchool — Admin Dashboard</title>
+<link rel="stylesheet" href="app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginView" class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">🎓 Smart<span>School</span></div>
+    <p class="login-sub">School Management System — Admin Login</p>
+    <label>Email</label>
+    <input id="loginEmail" type="email" value="admin@school.pk" autocomplete="username">
+    <label>Password</label>
+    <input id="loginPass" type="password" value="admin123" autocomplete="current-password">
+    <button class="btn btn-primary w100" onclick="doLogin()">Sign In</button>
+    <p class="login-err" id="loginErr"></p>
+    <p class="login-hint">Demo: admin@school.pk / admin123</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appView" class="app hidden">
+  <aside class="sidebar">
+    <div class="side-logo">🎓 Smart<span>School</span></div>
+    <div class="side-school" id="sideSchool">Demo School</div>
+    <nav id="sideNav"></nav>
+    <div class="side-foot">
+      <button class="btn btn-ghost w100" onclick="doLogout()">⎋ Logout</button>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <button class="burger" onclick="document.body.classList.toggle('nav-open')">☰</button>
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="top-right">
+        <span id="todayLabel"></span>
+        <span class="avatar">A</span>
+      </div>
+    </header>
+    <main id="page" class="page"></main>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modalWrap" class="modal-wrap hidden">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modalTitle"></h3><button class="x" onclick="closeModal()">✕</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<!-- PRINT AREA -->
+<div id="printArea" class="print-area"></div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
