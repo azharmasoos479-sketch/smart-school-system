@@ -20,7 +20,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const monthLabel = m => { const [y, mo] = m.split('-'); return MONTHS[+mo - 1] + ' ' + y; };
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 2400); }
 function save() { localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
-function load() { try { DB = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { DB = null; } if (!DB || !DB.students) { DB = seed(); save(); } }
+function load() { try { DB = JSON.parse(localStorage.getItem(DB_KEY)); } catch (e) { DB = null; } if (!DB || !DB.students) { DB = seed(); save(); } if (DB && !DB.users) { DB.users = defaultUsers(); save(); } }
 
 /* deterministic pseudo-random for stable demo data */
 function rng(seedNum) { let s = seedNum; return () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; }; }
@@ -114,6 +114,7 @@ function seed() {
       { id: uid('an'), date: todayStr(), title: 'Parent–Teacher Meeting', body: 'PTM for all classes will be held on Saturday, 10:00 AM to 1:00 PM. Parents are requested to attend.', target: 'Parents' },
       { id: uid('an'), date: todayStr(), title: 'Monthly Test Schedule', body: 'Monthly tests begin next Monday. Date sheet has been shared with all classes.', target: 'All' }
     ],
+    users: defaultUsers(),
     timetable: {
       'c8_A': { Mon: ['English', 'Math', 'Science', 'Urdu', 'Islamiyat', 'Computer'], Tue: ['Math', 'English', 'Urdu', 'Science', 'Computer', 'Islamiyat'], Wed: ['Science', 'Urdu', 'Math', 'English', 'Islamiyat', 'Computer'], Thu: ['Urdu', 'Science', 'English', 'Math', 'Computer', 'Islamiyat'], Fri: ['Math', 'Islamiyat', 'English', 'Urdu', 'Science', '—'] }
     },
@@ -123,6 +124,20 @@ function seed() {
       { date: todayStr(), label: 'Monthly tests begin next Monday' }
     ]
   };
+}
+
+
+/* ---------- users & roles ---------- */
+function defaultUsers() {
+  return [
+    { id: 'u_admin', name: 'Administrator', email: 'admin@school.pk', pass: 'admin123', role: 'Admin' },
+    { id: 'u_teacher', name: 'Demo Teacher', email: 'teacher@school.pk', pass: 'teacher123', role: 'Teacher' },
+    { id: 'u_accounts', name: 'Demo Accountant', email: 'accounts@school.pk', pass: 'accounts123', role: 'Accountant' }
+  ];
+}
+function currentUser() {
+  const em = localStorage.getItem(SESSION_KEY);
+  return (DB.users || []).find(u => u.email === em) || (DB.users || [])[0] || null;
 }
 
 /* ---------- lookups ---------- */
@@ -143,17 +158,16 @@ function gradeFor(pct) {
 
 /* ---------- auth ---------- */
 function doLogin() {
-  const e = $('#loginEmail').value.trim(), p = $('#loginPass').value;
-  if (e === 'admin@school.pk' && p === 'admin123') {
-    localStorage.setItem(SESSION_KEY, '1');
-    showApp();
-  } else { $('#loginErr').textContent = 'Invalid email or password. Use the demo login shown below.'; }
+  const e = $('#loginEmail').value.trim().toLowerCase(), p = $('#loginPass').value;
+  const u = (DB.users || []).find(x => x.email.toLowerCase() === e && x.pass === p);
+  if (u) { localStorage.setItem(SESSION_KEY, u.email); showApp(); }
+  else { $('#loginErr').textContent = 'Invalid email or password. Use a demo login shown below.'; }
 }
 function doLogout() { localStorage.removeItem(SESSION_KEY); location.reload(); }
 function showApp() {
   $('#loginView').classList.add('hidden');
   $('#appView').classList.remove('hidden');
-  $('#sideSchool').textContent = DB.school.name + ' — ' + DB.school.city;
+  const cu = currentUser(); $('#sideSchool').textContent = DB.school.name + ' — ' + DB.school.city + (cu ? ' · ' + cu.name + ' (' + cu.role + ')' : ''); const av = document.querySelector('.avatar'); if (av && cu) av.textContent = cu.name.trim().charAt(0).toUpperCase();
   $('#todayLabel').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   buildNav(); go('dashboard');
 }
@@ -633,7 +647,7 @@ function renderBehaviour() {
     <div class="panel"><table><tr><th>Date</th><th>Student</th><th>Type</th><th>Staff Note</th><th>Message to Parents</th><th>Shared</th><th></th></tr>
     ${DB.behaviour.slice().reverse().map(b => { const s = stuById(b.studentId); return `<tr><td>${b.date}</td><td><b>${esc(s ? s.name : '—')}</b><br><span class="small mut">${s ? clsName(s.classId) + '-' + s.section : ''}</span></td>
       <td><span class="pill ${b.type === 'Appreciation' ? 'green' : 'amber'}">${b.type === 'Appreciation' ? '⭐ Appreciation' : '⚠ Concern'}</span></td>
-      <td>${esc(b.note)}</td><td>${esc(b.parentMsg)}</td><td>${b.shared ? '<span class="pill green">Yes</span>' : '<span class="pill grey">No</span>'}</td>
+      <td>${esc(b.note)}${b.by ? '<br><span class="small mut">by ' + esc(b.by) + '</span>' : ''}</td><td>${esc(b.parentMsg)}</td><td>${b.shared ? '<span class="pill green">Yes</span>' : '<span class="pill grey">No</span>'}</td>
       <td><button class="btn btn-sm btn-danger" onclick="confirmBox('Delete this behaviour entry?',()=>delBehaviour('${b.id}'))">✕</button></td></tr>`; }).join('') || '<tr><td colspan="7" class="empty">No entries yet</td></tr>'}
     </table></div>`;
 }
@@ -649,7 +663,7 @@ function behaviourForm() {
     <label style="display:flex;gap:8px;align-items:center;margin-top:14px"><input type="checkbox" name="shared" checked style="width:auto"> Share with parents</label>
     ${formActions('Save Entry')}</form>`);
 }
-function saveBehaviour(e) { e.preventDefault(); const f = new FormData(e.target); DB.behaviour.push({ id: uid('bh'), studentId: f.get('studentId'), date: f.get('date'), type: f.get('type'), note: f.get('note'), parentMsg: f.get('parentMsg'), shared: !!f.get('shared') }); save(); closeModal(); renderBehaviour(); toast('Behaviour entry saved'); }
+function saveBehaviour(e) { e.preventDefault(); const f = new FormData(e.target); DB.behaviour.push({ id: uid('bh'), studentId: f.get('studentId'), date: f.get('date'), type: f.get('type'), note: f.get('note'), parentMsg: f.get('parentMsg'), shared: !!f.get('shared'), by: (currentUser() || {}).name || '' }); save(); closeModal(); renderBehaviour(); toast('Behaviour entry saved'); }
 function delBehaviour(id) { DB.behaviour = DB.behaviour.filter(b => b.id !== id); save(); renderBehaviour(); }
 
 /* ---------- announcements ---------- */
@@ -657,7 +671,7 @@ function renderAnnounce() {
   $('#page').innerHTML = `
     <div class="toolbar"><span class="mut">Announcements reach parents and staff in the app (WhatsApp/SMS in the full version).</span><span class="sp"></span>
     <button class="btn btn-primary" onclick="announceForm()">＋ New Announcement</button></div>
-    ${DB.announcements.slice().reverse().map(a => `<div class="panel"><div style="display:flex;gap:10px;align-items:center"><h3 style="margin:0">📣 ${esc(a.title)}</h3><span class="pill blue">${esc(a.target)}</span><span class="sp" style="flex:1"></span><span class="small mut">${a.date}</span><button class="btn btn-sm btn-danger" onclick="confirmBox('Delete this announcement?',()=>delAnnounce('${a.id}'))">✕</button></div><p style="margin-top:8px">${esc(a.body)}</p></div>`).join('') || '<div class="panel empty">No announcements yet</div>'}`;
+    ${DB.announcements.slice().reverse().map(a => `<div class="panel"><div style="display:flex;gap:10px;align-items:center"><h3 style="margin:0">📣 ${esc(a.title)}</h3><span class="pill blue">${esc(a.target)}</span><span class="sp" style="flex:1"></span><span class="small mut">${a.date}${a.by ? ' · by ' + esc(a.by) : ''}</span><button class="btn btn-sm btn-danger" onclick="confirmBox('Delete this announcement?',()=>delAnnounce('${a.id}'))">✕</button></div><p style="margin-top:8px">${esc(a.body)}</p></div>`).join('') || '<div class="panel empty">No announcements yet</div>'}`;
 }
 function announceForm() {
   openModal('New Announcement', `<form id="modalForm" onsubmit="saveAnnounce(event)">
@@ -666,7 +680,7 @@ function announceForm() {
     ${field('Send To', `<select name="target"><option>All</option><option>Parents</option><option>Teachers</option><option>Staff</option></select>`)}
     ${formActions('Send Announcement')}</form>`);
 }
-function saveAnnounce(e) { e.preventDefault(); const f = new FormData(e.target); DB.announcements.push({ id: uid('an'), date: todayStr(), title: f.get('title'), body: f.get('body'), target: f.get('target') }); save(); closeModal(); renderAnnounce(); toast('Announcement sent'); }
+function saveAnnounce(e) { e.preventDefault(); const f = new FormData(e.target); DB.announcements.push({ id: uid('an'), date: todayStr(), title: f.get('title'), body: f.get('body'), target: f.get('target'), by: (currentUser() || {}).name || '' }); save(); closeModal(); renderAnnounce(); toast('Announcement sent'); }
 function delAnnounce(id) { DB.announcements = DB.announcements.filter(a => a.id !== id); save(); renderAnnounce(); }
 
 /* ---------- timetable ---------- */
@@ -730,9 +744,10 @@ function renderSettings() {
         <button class="btn" onclick="exportCSV('challans')">Fees CSV</button>
         <button class="btn" onclick="exportCSV('ledger')">Ledger CSV</button>
         <button class="btn btn-danger" onclick="confirmBox('Reset ALL data back to the original demo school? This cannot be undone.',()=>{localStorage.removeItem(DB_KEY);location.reload();})">Reset Demo Data</button>
-      </div></div>`;
+      </div></div>
+    ${usersPanelHTML()}`;
 }
-function saveSchool(e) { e.preventDefault(); DB.school = { name: $('#sc_name').value, city: $('#sc_city').value, phone: $('#sc_phone').value, email: $('#sc_email').value, address: $('#sc_addr').value }; save(); $('#sideSchool').textContent = DB.school.name + ' — ' + DB.school.city; toast('School profile saved'); }
+function saveSchool(e) { e.preventDefault(); DB.school = { name: $('#sc_name').value, city: $('#sc_city').value, phone: $('#sc_phone').value, email: $('#sc_email').value, address: $('#sc_addr').value }; save(); const cu = currentUser(); $('#sideSchool').textContent = DB.school.name + ' — ' + DB.school.city + (cu ? ' · ' + cu.name + ' (' + cu.role + ')' : ''); const av = document.querySelector('.avatar'); if (av && cu) av.textContent = cu.name.trim().charAt(0).toUpperCase(); toast('School profile saved'); }
 function setFee(id, v) { DB.classes.find(c => c.id === id).fee = Math.max(0, +v || 0); save(); toast('Fee updated'); }
 function addSubject(e) { e.preventDefault(); const v = $('#newSubject').value.trim(); if (v && !DB.subjects.includes(v)) { DB.subjects.push(v); save(); renderSettings(); toast('Subject added'); } }
 function downloadBackup() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' })); a.download = 'smartschool-backup-' + todayStr() + '.json'; a.click(); }
@@ -742,6 +757,35 @@ function restoreBackup(input) {
   r.onload = () => { try { const data = JSON.parse(r.result); if (!data.students || !data.classes) throw new Error('bad'); DB = data; save(); toast('Backup restored'); go('dashboard'); } catch (e) { toast('That file is not a valid SmartSchool backup'); } };
   r.readAsText(file);
 }
+
+
+/* ---------- users & roles (settings) ---------- */
+function usersPanelHTML() {
+  const cu = currentUser();
+  return `<div class="panel"><h3>👥 Users & Roles — everyone has their own login and their own records</h3>
+    <p class="mut" style="margin-bottom:12px">Each user signs in with their own email & password. Entries they create (announcements, behaviour, fee collections, ledger) are recorded under their name. Admin manages accounts here.</p>
+    <table><tr><th>Name</th><th>Email (login)</th><th>Role</th><th></th></tr>
+    ${DB.users.map(u => `<tr><td><b>${esc(u.name)}</b>${cu && u.id === cu.id ? ' <span class="pill green">You</span>' : ''}</td><td>${esc(u.email)}</td><td><span class="pill blue">${esc(u.role)}</span></td>
+    <td class="right">${cu && u.id === cu.id ? '' : `<button class="btn btn-sm btn-danger" onclick="confirmBox('Delete user ${esc(u.name)}?',()=>delUser('${u.id}'))">Delete</button>`}</td></tr>`).join('')}
+    </table>
+    <form onsubmit="addUser(event)" style="margin-top:16px">
+      <div class="form-grid">
+        ${field('Full Name', `<input id="nu_name" required placeholder="e.g. Muhammad Ilyas">`)}
+        ${field('Email (login)', `<input id="nu_email" type="email" required placeholder="name@school.pk">`)}
+        ${field('Password', `<input id="nu_pass" required placeholder="Set a password">`)}
+        ${field('Role', `<select id="nu_role"><option>Admin</option><option>Teacher</option><option>Accountant</option><option>Staff</option></select>`)}
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">＋ Add User</button></div>
+    </form></div>`;
+}
+function addUser(e) {
+  e.preventDefault();
+  const email = $('#nu_email').value.trim().toLowerCase();
+  if (DB.users.some(u => u.email.toLowerCase() === email)) { toast('A user with this email already exists'); return; }
+  DB.users.push({ id: uid('u'), name: $('#nu_name').value.trim(), email, pass: $('#nu_pass').value, role: $('#nu_role').value });
+  save(); renderSettings(); toast('User added — they can now sign in with their own login');
+}
+function delUser(id) { DB.users = DB.users.filter(u => u.id !== id); save(); renderSettings(); toast('User deleted'); }
 
 /* ---------- CSV export ---------- */
 function exportCSV(kind) {
@@ -759,4 +803,4 @@ function exportCSV(kind) {
 
 /* ---------- init ---------- */
 load();
-if (localStorage.getItem(SESSION_KEY) === '1') showApp();
+if (localStorage.getItem(SESSION_KEY)) showApp();

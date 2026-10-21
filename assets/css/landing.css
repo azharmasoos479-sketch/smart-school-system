@@ -76,3 +76,6 @@ footer{border-top:1px solid var(--line);padding:28px 0;color:var(--mut);font-siz
 .foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 @media(max-width:900px){.hero-grid{grid-template-columns:1fr}.hero h1{font-size:36px}.grid-3,.grid-4{grid-template-columns:1fr 1fr}.nav-links{display:none}.nav-links.open{display:flex;position:absolute;top:68px;left:0;right:0;background:#fff;flex-direction:column;padding:16px 20px;border-bottom:1px solid var(--line)}.burger{display:block}}
 @media(max-width:560px){.grid-3,.grid-4{grid-template-columns:1fr}.mock-stats{grid-template-columns:1fr 1fr 1fr}}
+
+.wa-float{position:fixed;right:22px;bottom:22px;width:58px;height:58px;border-radius:50%;background:#25d366;color:#fff;font-size:27px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px rgba(18,140,70,.45);z-index:99;text-decoration:none}
+.wa-float:hover{transform:scale(1.07)}
